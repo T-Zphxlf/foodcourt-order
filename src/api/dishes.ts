@@ -1,0 +1,388 @@
+/**
+ * Dishes API - 菜品管理（单店版）
+ */
+
+import { Hono } from 'hono';
+import { z } from 'zod';
+import { AppType } from '../types';
+import { response } from '../utils/response';
+import { TranslationService } from '../services/translation';
+
+// Validation Schemas
+const createDishSchema = z.object({
+  name: z.string().min(1).max(255),
+  name_en: z.string().optional(),
+  description: z.string().optional(),
+  description_en: z.string().optional(),
+  category_id: z.string().min(1).optional(),
+  price: z.number().positive(),
+  original_price: z.number().positive().optional(),
+  cost_price: z.number().positive().optional(),
+  image_url: z.string().url().optional(),
+  unit: z.string().default('碗'),
+  portion_size: z.string().optional(),
+  has_inventory: z.boolean().default(false),
+  total_stock: z.number().int().min(0).optional(),
+  low_stock_threshold: z.number().int().min(0).default(10),
+  is_spicy: z.boolean().default(false),
+  spicy_level: z.number().min(1).max(5).optional(),
+  is_vegetarian: z.boolean().default(false),
+  is_vegan: z.boolean().default(false),
+  allergens: z.array(z.string()).optional(),
+  ingredients: z.array(z.string()).optional(),
+  dietary_tags: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
+  is_recommended: z.boolean().default(false),
+  sort_order: z.number().int().default(0),
+  status: z.enum(['active', 'inactive', 'draft']).default('active'),
+});
+
+const updateDishSchema = createDishSchema.partial();
+
+const batchStockSchema = z.object({
+  dishes: z.array(z.object({
+    dish_id: z.string().min(1),
+    quantity: z.number().int(),
+  })),
+});
+
+export const dishRoutes = new Hono<AppType>();
+
+// ==================== Get Recommended Dishes ====================
+// NOTE: Must be registered BEFORE /:id to avoid route conflict
+
+dishRoutes.get('/recommended', async (c) => {
+  const db = c.env.DB;
+  const lang = c.get('lang') || 'zh-CN';
+  const limit = parseInt(c.req.query('limit') || '10');
+
+  const query = `
+    SELECT d.*
+    FROM dish d
+    WHERE d.deleted_at IS NULL
+      AND d.status = 'active'
+      AND d.is_available = 1
+      AND d.is_recommended = 1
+      AND d.is_sold_out = 0
+    ORDER BY d.avg_rating DESC, d.total_sold DESC
+    LIMIT ?
+  `;
+
+  const result = await db.prepare(query).bind(limit).all();
+
+  const translatedResults = (result.results || []).map((dish: any) => {
+    if (lang !== 'zh-CN' && dish.name_en) {
+      return { ...dish, display_name: dish.name_en };
+    }
+    return { ...dish, display_name: dish.name };
+  });
+
+  return c.json(response(translatedResults));
+});
+
+// ==================== Search Dishes ====================
+// NOTE: Must be registered BEFORE /:id to avoid route conflict
+
+dishRoutes.get('/search', async (c) => {
+  const db = c.env.DB;
+  const lang = c.get('lang') || 'zh-CN';
+  const q = c.req.query('q');
+  const page = parseInt(c.req.query('page') || '1');
+  const limit = Math.min(parseInt(c.req.query('limit') || '20'), 100);
+  const offset = (page - 1) * limit;
+
+  if (!q || q.length < 2) {
+    return c.json(response([]));
+  }
+
+  const searchTerm = `%${q}%`;
+
+  const query = `
+    SELECT d.*
+    FROM dish d
+    WHERE d.deleted_at IS NULL
+      AND d.status = 'active'
+      AND d.is_available = 1
+      AND (
+        d.name LIKE ? OR d.name_en LIKE ? OR d.description LIKE ?
+        OR d.description_en LIKE ?
+      )
+    ORDER BY d.avg_rating DESC, d.total_sold DESC
+    LIMIT ? OFFSET ?
+  `;
+
+  const bindings: any[] = [searchTerm, searchTerm, searchTerm, searchTerm, limit, offset];
+
+  const result = await db.prepare(query).bind(...bindings).all();
+
+  const translatedResults = (result.results || []).map((dish: any) => {
+    if (lang !== 'zh-CN' && dish.name_en) {
+      return { ...dish, display_name: dish.name_en };
+    }
+    return { ...dish, display_name: dish.name };
+  });
+
+  return c.json(response(translatedResults));
+});
+
+// ==================== List Dishes ====================
+
+dishRoutes.get('/', async (c) => {
+  const db = c.env.DB;
+  const lang = c.get('lang') || 'zh-CN';
+
+  const category = c.req.query('category');
+  const available = c.req.query('available') === 'true';
+  const recommended = c.req.query('recommended') === 'true';
+  const page = parseInt(c.req.query('page') || '1');
+  const limit = Math.min(parseInt(c.req.query('limit') || '20'), 100);
+  const offset = (page - 1) * limit;
+
+  let query = `
+    SELECT d.*, c.name as category_name
+    FROM dish d
+    LEFT JOIN dish_category c ON d.category_id = c.id
+    WHERE d.deleted_at IS NULL
+  `;
+
+  const bindings: any[] = [];
+
+  if (category) {
+    query += ` AND d.category_id = ?`;
+    bindings.push(category);
+  }
+
+  if (available) {
+    query += ` AND d.is_available = 1 AND d.is_sold_out = 0`;
+  }
+
+  if (recommended) {
+    query += ` AND d.is_recommended = 1`;
+  }
+
+  query += ` ORDER BY d.sort_order ASC, d.created_at DESC LIMIT ? OFFSET ?`;
+  bindings.push(limit, offset);
+
+  const result = await db.prepare(query).bind(...bindings).all();
+
+  const translatedResults = (result.results || []).map((dish: any) => {
+    if (lang !== 'zh-CN' && dish.name_en) {
+      return { ...dish, display_name: dish.name_en };
+    }
+    return { ...dish, display_name: dish.name };
+  });
+
+  return c.json(response(translatedResults));
+});
+
+// ==================== Get Dish ====================
+
+dishRoutes.get('/:id', async (c) => {
+  const db = c.env.DB;
+  const lang = c.get('lang') || 'zh-CN';
+  const id = c.req.param('id');
+
+  const result = await db.prepare(`
+    SELECT
+      d.*,
+      c.name as category_name
+    FROM dish d
+    LEFT JOIN dish_category c ON d.category_id = c.id
+    WHERE d.id = ? AND d.deleted_at IS NULL
+  `).bind(id).first();
+
+  if (!result) {
+    return c.json(response(null, 40401, 'Dish not found'), 404);
+  }
+
+  const displayName = lang !== 'zh-CN' && result.name_en ? result.name_en : result.name;
+  const displayDescription = lang !== 'zh-CN' && result.description_en ? result.description_en : result.description;
+
+  return c.json(response({
+    ...result,
+    display_name: displayName,
+    display_description: displayDescription,
+  }));
+});
+
+// ==================== Create Dish ====================
+
+dishRoutes.post('/', async (c) => {
+  const db = c.env.DB;
+  const lang = c.get('lang') || 'zh-CN';
+  const body = await c.req.json();
+
+  const validation = createDishSchema.safeParse(body);
+  if (!validation.success) {
+    return c.json(response(null, 40001, 'Validation error', {
+      errors: validation.error.errors,
+    }), 400);
+  }
+
+  const data = validation.data;
+
+  const result = await db.prepare(`
+    INSERT INTO dish (
+      name, name_en, description, description_en,
+      category_id, price, original_price, cost_price,
+      image_url, unit, portion_size,
+      has_inventory, total_stock, remaining_stock, low_stock_threshold,
+      is_spicy, spicy_level, is_vegetarian, is_vegan,
+      allergens, ingredients, dietary_tags,
+      tags, is_recommended, sort_order, status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    data.name,
+    data.name_en || null,
+    data.description || null,
+    data.description_en || null,
+    data.category_id || null,
+    data.price,
+    data.original_price || null,
+    data.cost_price || null,
+    data.image_url || null,
+    data.unit,
+    data.portion_size || null,
+    data.has_inventory,
+    data.total_stock || null,
+    data.total_stock || null,
+    data.low_stock_threshold,
+    data.is_spicy,
+    data.spicy_level || null,
+    data.is_vegetarian,
+    data.is_vegan,
+    JSON.stringify(data.allergens || []),
+    JSON.stringify(data.ingredients || []),
+    JSON.stringify(data.dietary_tags || []),
+    JSON.stringify(data.tags || []),
+    data.is_recommended ? 1 : 0,
+    data.sort_order,
+    data.status
+  ).run();
+
+  const dishId = result.meta.last_row_id;
+
+  return c.json(response({
+    id: dishId,
+    ...data,
+  }), 201);
+});
+
+// ==================== Update Dish ====================
+
+dishRoutes.put('/:id', async (c) => {
+  const db = c.env.DB;
+  const id = c.req.param('id');
+  const body = await c.req.json();
+
+  const validation = updateDishSchema.safeParse(body);
+  if (!validation.success) {
+    return c.json(response(null, 40001, 'Validation error', {
+      errors: validation.error.errors,
+    }), 400);
+  }
+
+  const data = validation.data;
+
+  const updates: string[] = [];
+  const values: any[] = [];
+
+  Object.entries(data).forEach(([key, value]) => {
+    if (value !== undefined && key !== 'id') {
+      if (['allergens', 'ingredients', 'dietary_tags', 'tags'].includes(key)) {
+        updates.push(`${key} = ?`);
+        values.push(JSON.stringify(value));
+      } else {
+        updates.push(`${key} = ?`);
+        values.push(value);
+      }
+    }
+  });
+
+  if (updates.length > 0) {
+    updates.push('updated_at = datetime("now")');
+    values.push(id);
+
+    await db.prepare(`
+      UPDATE dish SET ${updates.join(', ')} WHERE id = ? AND deleted_at IS NULL
+    `).bind(...values).run();
+  }
+
+  return c.json(response({ success: true }));
+});
+
+// ==================== Update Dish Stock ====================
+
+dishRoutes.post('/:id/stock', async (c) => {
+  const db = c.env.DB;
+  const id = c.req.param('id');
+  const body = await c.req.json();
+
+  const { action, quantity, reason } = body;
+
+  let query = `SELECT * FROM dish WHERE id = ? AND deleted_at IS NULL`;
+  const dish = await db.prepare(query).bind(id).first();
+
+  if (!dish) {
+    return c.json(response(null, 40401, 'Dish not found'), 404);
+  }
+
+  let newStock = dish.remaining_stock || 0;
+
+  switch (action) {
+    case 'restock':
+      newStock += quantity;
+      break;
+    case 'adjust':
+      newStock += quantity;
+      break;
+    case 'set':
+      newStock = quantity;
+      break;
+    default:
+      return c.json(response(null, 40001, 'Invalid action'), 400);
+  }
+
+  await db.prepare(`
+    UPDATE dish
+    SET remaining_stock = ?,
+        total_stock = COALESCE(total_stock, 0) + ?,
+        is_sold_out = CASE WHEN ? <= 0 THEN 1 ELSE 0 END,
+        last_restock_at = datetime('now'),
+        updated_at = datetime('now')
+    WHERE id = ?
+  `).bind(newStock, quantity, newStock, id).run();
+
+  await db.prepare(`
+    INSERT INTO dish_inventory_log (
+      dish_id, log_type, change_quantity, previous_stock, new_stock, note
+    ) VALUES (?, ?, ?, ?, ?, ?)
+  `).bind(
+    id,
+    action === 'restock' ? 'restock' : 'adjust',
+    quantity,
+    dish.remaining_stock || 0,
+    newStock,
+    reason || null
+  ).run();
+
+  return c.json(response({
+    success: true,
+    previous_stock: dish.remaining_stock || 0,
+    new_stock: newStock,
+  }));
+});
+
+// ==================== Delete Dish ====================
+
+dishRoutes.delete('/:id', async (c) => {
+  const db = c.env.DB;
+  const id = c.req.param('id');
+
+  await db.prepare(`
+    UPDATE dish SET deleted_at = datetime('now'), status = 'inactive'
+    WHERE id = ? AND deleted_at IS NULL
+  `).bind(id).run();
+
+  return c.json(response({ success: true }));
+});

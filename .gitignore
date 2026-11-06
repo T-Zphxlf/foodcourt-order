@@ -1,0 +1,25 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+*.local
+.env
+.env.*
+
+# Frontend build outputs
+frontend/dist/
+admin/dist/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
