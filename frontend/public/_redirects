@@ -1,0 +1,3 @@
+# 放在 frontend/public/_redirects
+# Vite 构建时会复制到 dist/ 根目录
+/* /index.html 200
