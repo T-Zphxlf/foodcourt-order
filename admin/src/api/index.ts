@@ -27,16 +27,30 @@ api.interceptors.response.use(
 
 // Auth
 export const adminLogin = (data: { email: string; password: string }) =>
-  api.post('/admin/auth/login', { ...data, role: 'admin' })
+  api.post('/auth/login', { ...data, role: 'admin' })
 
-// Shop
-export const getShop = () => api.get('/admin/shop')
-export const updateShop = (data: any) => api.put('/admin/shop', data)
+// Food Courts
+export const getAdminFoodCourts = (params?: any) => api.get('/admin/food-courts', { params })
+export const getAdminFoodCourt = (id: string) => api.get(`/admin/food-courts/${id}`)
+export const createFoodCourt = (data: any) => api.post('/admin/food-courts', data)
+export const updateFoodCourt = (id: string, data: any) => api.put(`/admin/food-courts/${id}`, data)
+export const deleteFoodCourt = (id: string) => api.delete(`/admin/food-courts/${id}`)
+
+// Stalls
+export const getAdminStalls = (foodCourtId: string, params?: any) =>
+  api.get(`/admin/food-courts/${foodCourtId}/stalls`, { params })
+export const getAdminStall = (id: string) => api.get(`/admin/stalls/${id}`)
+export const createStall = (foodCourtId: string, data: any) =>
+  api.post(`/admin/food-courts/${foodCourtId}/stalls`, data)
+export const updateStall = (id: string, data: any) => api.put(`/admin/stalls/${id}`, data)
+export const deleteStall = (id: string) => api.delete(`/admin/stalls/${id}`)
 
 // Dishes
-export const getAdminDishes = (params?: any) => api.get('/admin/dishes', { params })
+export const getAdminDishes = (stallId: string, params?: any) =>
+  api.get(`/admin/stalls/${stallId}/dishes`, { params })
 export const getAdminDish = (id: string) => api.get(`/admin/dishes/${id}`)
-export const createDish = (data: any) => api.post('/admin/dishes', data)
+export const createDish = (stallId: string, data: any) =>
+  api.post(`/admin/stalls/${stallId}/dishes`, data)
 export const updateDish = (id: string, data: any) => api.put(`/admin/dishes/${id}`, data)
 export const deleteDish = (id: string) => api.delete(`/admin/dishes/${id}`)
 
@@ -52,5 +66,8 @@ export const cancelAdminOrder = (id: string, data?: any) => api.post(`/admin/ord
 // Stats
 export const getAdminStats = () => api.get('/admin/stats/overview')
 export const getAdminOrderStats = (params?: any) => api.get('/admin/stats/orders', { params })
+
+// Settlements
+export const getSettlements = (params?: any) => api.get('/admin/settlements', { params })
 
 export default api
