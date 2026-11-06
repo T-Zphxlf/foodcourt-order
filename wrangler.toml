@@ -1,7 +1,7 @@
 # Cloudflare Workers Configuration
 # Food Court Ordering System API
 
-name = "foodcourt-order-api"
+name = "foodcourt-order"
 main = "src/index.ts"
 compatibility_date = "2026-02-15"
 compatibility_flags = ["nodejs_compat"]
