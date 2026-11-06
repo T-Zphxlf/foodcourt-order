@@ -13,7 +13,6 @@ api.interceptors.request.use((config) => {
   }
   const lang = localStorage.getItem('fc-locale') || 'en'
   config.headers['Accept-Language'] = lang
-  // Session ID for guest cart
   let sessionId = localStorage.getItem('fc-session')
   if (!sessionId) {
     sessionId = crypto.randomUUID()
@@ -31,16 +30,10 @@ api.interceptors.response.use(
   }
 )
 
-// Food Courts
-export const getFoodCourt = (id: string) => api.get(`/food-courts/${id}`)
-export const getFoodCourts = (params?: Record<string, any>) => api.get('/food-courts', { params })
-
-// Stalls
-export const getStalls = (foodCourtId: string, params?: Record<string, any>) =>
-  api.get('/stalls', { params: { ...params, food_court_id: foodCourtId } })
-export const getStall = (id: string) => api.get(`/stalls/${id}`)
-export const getStallDishes = (id: string, params?: Record<string, any>) =>
-  api.get(`/stalls/${id}/dishes`, { params })
+// Shop
+export const getShop = () => api.get('/shop')
+export const getMenu = () => api.get('/menu')
+export const getMenuCategories = () => api.get('/menu/categories')
 
 // Dishes
 export const getDishes = (params?: Record<string, any>) => api.get('/dishes', { params })
@@ -71,9 +64,5 @@ export const completeOrder = (id: string) => api.post(`/orders/${id}/complete`)
 export const createPayment = (data: { order_id: string; payment_method: string }) =>
   api.post('/payment/create', data)
 export const getPaymentStatus = (paymentId: string) => api.get(`/payment/status/${paymentId}`)
-
-// Search
-export const globalSearch = (params: { q: string; food_court_id?: string }) =>
-  api.get('/search', { params })
 
 export default api

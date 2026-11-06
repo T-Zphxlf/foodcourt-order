@@ -1,31 +1,31 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
-import { getRecommendedDishes, getStalls } from '@/api'
+import { getShop, getRecommendedDishes } from '@/api'
 import DishCard from '@/components/DishCard.vue'
-import StallCard from '@/components/StallCard.vue'
 
-const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
 const appStore = useAppStore()
 
-const foodCourtId = computed(() => route.params.foodCourtId as string)
+const shop = ref<any>(null)
 const recommendedDishes = ref<any[]>([])
-const stalls = ref<any[]>([])
 const loading = ref(true)
 
 onMounted(async () => {
   loading.value = true
   try {
-    const [dishRes, stallRes] = await Promise.all([
-      getRecommendedDishes({ food_court_id: foodCourtId.value, limit: 6 }),
-      getStalls(foodCourtId.value, { limit: 10 }),
+    const [shopRes, dishRes] = await Promise.all([
+      getShop(),
+      getRecommendedDishes({ limit: 6 }),
     ]) as any[]
+    shop.value = shopRes.data || null
     recommendedDishes.value = dishRes.data || []
-    stalls.value = stallRes.data || []
+    if (shop.value) {
+      appStore.initShop(shop.value)
+    }
   } catch {
     // handle
   } finally {
@@ -33,22 +33,17 @@ onMounted(async () => {
   }
 })
 
-function goToStall(stallId: string) {
-  router.push(`/fc/${foodCourtId.value}/stall/${stallId}`)
-}
-
 function goToDish(dish: any) {
-  router.push(`/fc/${foodCourtId.value}/dish/${dish.id}`)
+  router.push(`/dish/${dish.id}`)
 }
 
 function goToSearch() {
-  router.push(`/fc/${foodCourtId.value}/search`)
+  router.push('/search')
 }
 
-const foodCourtName = computed(() => {
-  const fc = appStore.foodCourt
-  if (!fc) return ''
-  return locale.value === 'en' && fc.name_en ? fc.name_en : fc.name
+const shopName = computed(() => {
+  if (!shop.value) return 'My Shop'
+  return locale.value === 'en' && shop.value.name_en ? shop.value.name_en : shop.value.name
 })
 </script>
 
@@ -56,9 +51,9 @@ const foodCourtName = computed(() => {
   <div>
     <!-- Header -->
     <div class="bg-primary-500 text-white px-4 pt-10 pb-6">
-      <h1 class="text-xl font-bold">{{ foodCourtName || 'FoodCourt' }}</h1>
-      <p v-if="appStore.foodCourt?.address" class="text-sm opacity-80 mt-1">
-        {{ appStore.foodCourt.address }}
+      <h1 class="text-xl font-bold">{{ shopName }}</h1>
+      <p v-if="shop?.address" class="text-sm opacity-80 mt-1">
+        {{ shop.address }}
       </p>
       <!-- Search Bar -->
       <div class="mt-4 relative" @click="goToSearch">
@@ -93,29 +88,8 @@ const foodCourtName = computed(() => {
           </div>
         </section>
 
-        <!-- Stalls -->
-        <section v-if="stalls.length">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="font-bold text-lg">{{ t('home.allStalls') }}</h2>
-            <button
-              class="text-primary-500 text-sm"
-              @click="router.push(`/fc/${foodCourtId}/stalls`)"
-            >
-              {{ t('home.viewAll') }}
-            </button>
-          </div>
-          <div class="grid grid-cols-2 gap-3 pb-4">
-            <StallCard
-              v-for="stall in stalls"
-              :key="stall.id"
-              :stall="stall"
-              @click="goToStall"
-            />
-          </div>
-        </section>
-
         <!-- Empty -->
-        <div v-if="!recommendedDishes.length && !stalls.length" class="text-center py-12 text-gray-400">
+        <div v-if="!recommendedDishes.length" class="text-center py-12 text-gray-400">
           <p>{{ t('common.noData') }}</p>
         </div>
       </template>

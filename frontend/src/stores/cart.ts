@@ -8,8 +8,6 @@ export interface CartItem {
   dish_name: string
   dish_name_en?: string
   dish_image?: string
-  stall_id: string
-  stall_name: string
   quantity: number
   unit_price: number
   subtotal: number
@@ -19,27 +17,15 @@ export interface CartItem {
 export const useCartStore = defineStore('cart', () => {
   const items = ref<CartItem[]>([])
   const loading = ref(false)
-  const foodCourtId = ref<string>('')
 
   const totalItems = computed(() => items.value.reduce((sum, i) => sum + i.quantity, 0))
   const totalAmount = computed(() => items.value.reduce((sum, i) => sum + i.subtotal, 0))
-  const stallGroups = computed(() => {
-    const groups: Record<string, { stall_name: string; items: CartItem[] }> = {}
-    for (const item of items.value) {
-      if (!groups[item.stall_id]) {
-        groups[item.stall_id] = { stall_name: item.stall_name, items: [] }
-      }
-      groups[item.stall_id].items.push(item)
-    }
-    return groups
-  })
 
   async function fetchCart() {
     loading.value = true
     try {
       const res: any = await api.getCart()
       items.value = res.data?.items || []
-      foodCourtId.value = res.data?.food_court_id || ''
     } catch {
       // Cart may be empty
     } finally {
@@ -89,10 +75,8 @@ export const useCartStore = defineStore('cart', () => {
   return {
     items,
     loading,
-    foodCourtId,
     totalItems,
     totalAmount,
-    stallGroups,
     fetchCart,
     addItem,
     updateQuantity,

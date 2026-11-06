@@ -1,22 +1,21 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { getFoodCourt } from '@/api'
+import { getShop } from '@/api'
 
 export const useAppStore = defineStore('app', () => {
-  const foodCourtId = ref<string>('')
-  const foodCourt = ref<any>(null)
+  const shop = ref<any>(null)
   const loading = ref(false)
   const tableNumber = ref<string>('')
 
-  async function initFoodCourt(id: string) {
-    if (foodCourtId.value === id && foodCourt.value) return
-    foodCourtId.value = id
+  async function initShop(shopData: any) {
+    if (shop.value && shop.value.id === shopData.id) return
+    shop.value = shopData
     loading.value = true
     try {
-      const res: any = await getFoodCourt(id)
-      foodCourt.value = res.data
+      const res: any = await getShop()
+      shop.value = res.data || shopData
     } catch {
-      // handle error
+      // use provided data
     } finally {
       loading.value = false
     }
@@ -27,11 +26,10 @@ export const useAppStore = defineStore('app', () => {
   }
 
   return {
-    foodCourtId,
-    foodCourt,
+    shop,
     loading,
     tableNumber,
-    initFoodCourt,
+    initShop,
     setTable,
   }
 })
