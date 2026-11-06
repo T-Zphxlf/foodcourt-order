@@ -40,10 +40,10 @@ const createDishSchema = z.object({
 const updateDishSchema = createDishSchema.partial();
 
 const batchStockSchema = z.object({
-  dishes: z.array(z.object({
+  dishes: z.array({
     dish_id: z.string().min(1),
     quantity: z.number().int(),
-  })),
+  }),
 });
 
 export const dishRoutes = new Hono<AppType>();
@@ -160,7 +160,7 @@ dishRoutes.get('/', async (c) => {
     query += ` AND d.is_recommended = 1`;
   }
 
-  query += ` ORDER BY d.sort_order ASC, d.created_at DESC LIMIT ? OFFSET ?`;
+  query += ` ORDER BY d.created_at DESC LIMIT ? OFFSET ?`;
   bindings.push(limit, offset);
 
   const result = await db.prepare(query).bind(...bindings).all();

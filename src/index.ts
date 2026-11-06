@@ -168,7 +168,7 @@ app.get('/api/v1/menu', async (c) => {
       AND d.status = 'active'
       AND d.is_available = 1
       AND d.is_sold_out = 0
-    ORDER BY d.sort_order ASC, d.created_at DESC
+    ORDER BY d.created_at DESC
     LIMIT ? OFFSET ?
   `;
 
