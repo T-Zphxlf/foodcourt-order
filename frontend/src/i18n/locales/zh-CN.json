@@ -16,7 +16,8 @@
   },
   "nav": {
     "home": "首页",
-    "stalls": "档口",
+    "stalls": "菜单",
+    "menu": "菜单",
     "cart": "购物车",
     "orders": "订单",
     "me": "我的"

@@ -16,7 +16,8 @@
   },
   "nav": {
     "home": "Home",
-    "stalls": "Stalls",
+    "stalls": "Menu",
+    "menu": "Menu",
     "cart": "Cart",
     "orders": "Orders",
     "me": "Me"

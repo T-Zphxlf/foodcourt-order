@@ -11,7 +11,7 @@ const cartStore = useCartStore()
 
 const tabs = computed(() => [
   { name: 'home', icon: 'home', label: t('nav.home'), path: '/' },
-  { name: 'stalls', icon: 'store', label: t('nav.stalls'), path: '/stalls' },
+  { name: 'stalls', icon: 'store', label: t('nav.menu'), path: '/stalls' },
   { name: 'cart', icon: 'cart', label: t('nav.cart'), path: '/cart', badge: cartStore.totalItems },
   { name: 'orders', icon: 'receipt', label: t('nav.orders'), path: '/orders' },
 ])

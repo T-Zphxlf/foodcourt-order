@@ -11,7 +11,7 @@ const loading = ref(true)
 onMounted(async () => {
   try {
     const res: any = await getMenuCategories()
-    categories.value = res.data?.categories || []
+    categories.value = res.data || []
   } catch {
     //
   } finally {
