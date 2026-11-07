@@ -7,8 +7,8 @@ export const useAppStore = defineStore('app', () => {
   const loading = ref(false)
   const tableNumber = ref<string>('')
 
-  async function initShop(shopData: any) {
-    if (shop.value && shop.value.id === shopData.id) return
+  async function initShop(shopData?: any) {
+    if (shop.value && shopData && shop.value.id === shopData.id) return
     shop.value = shopData
     loading.value = true
     try {
