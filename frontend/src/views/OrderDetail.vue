@@ -35,7 +35,7 @@ async function handleCancel() {
   } catch {
     //
   }
-})
+}
 
 function statusColor(status: string) {
   const colors: Record<string, string> = {
