@@ -37,6 +37,7 @@ const getAuthService = (env: Env): AuthService => {
 
 const getCorsOrigin = (origin: string): string => {
   const allowedOrigins = [
+    'https://dd.tray.cc.cd',
     'https://noodle-shop.pages.dev',
     'https://noodle-admin.pages.dev',
     'http://localhost:5173',
