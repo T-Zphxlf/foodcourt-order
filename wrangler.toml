@@ -1,6 +1,21 @@
 # Cloudflare Workers Configuration
 # Food Court Ordering System API
 
+name = "foodcourt-order-api"
+main = "src/index.ts"
+compatibility_date = "2026-02-15"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database - Create with: wrangler d1 create foodcourt_order
+# Then update the database_id below
+[[d1_databases]]
+binding = "DB"
+database_name = "foodcourt_order"
+database_id = "0c9b236e-2e9c-4f96-950c-ea292fbe4aac"
+
+# Cloudflare Workers Configuration
+# Food Court Ordering System API
+
 name = "foodcourt-order"
 main = "src/index.ts"
 compatibility_date = "2026-02-15"
@@ -17,6 +32,29 @@ database_id = "0c9b236e-2e9c-4f96-950c-ea292fbe4aac"
 [[kv_namespaces]]
 binding = "CACHE"
 id = "1812a4b3561d463a938328a53b6a2a1d"
+
+# Environment Variables
+[vars]
+ENV = "development"
+DEFAULT_LANGUAGE = "en"
+SUPPORTED_LANGUAGES = "en,zh-CN,zh-TW,ms,id,th,ja,ko"
+
+# IMPORTANT: Set secrets via CLI, not here:
+#   wrangler secret put JWT_SECRET
+#   wrangler secret put STRIPE_SECRET_KEY
+#   wrangler secret put STRIPE_WEBHOOK_SECRET
+#   wrangler secret put GRABPAY_MERCHANT_ID
+#   wrangler secret put GRABPAY_CLIENT_ID
+#   wrangler secret put GRABPAY_CLIENT_SECRET
+
+# Payment callback URLs (update with your domain)
+PAYMENT_SUCCESS_URL = "https://foodcourt-order.pages.dev/payment/success"
+PAYMENT_CANCEL_URL = "https://foodcourt-order.pages.dev/payment/cancel"
+
+# Production environment
+[env.production]
+vars = { ENV = "production" }
+
 
 # Environment Variables
 [vars]

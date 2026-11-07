@@ -1,9 +1,25 @@
-<template>
-  <router-view />
-</template>
-
 <script setup lang="ts">
-// 单店版布局组件
+import { onMounted, computed } from 'vue'
+import { useRoute, RouterView } from 'vue-router'
+import { useAppStore } from '@/stores/app'
+import { useCartStore } from '@/stores/cart'
+import TabBar from '@/components/TabBar.vue'
+
+const route = useRoute()
+const appStore = useAppStore()
+const cartStore = useCartStore()
+
+const hideTabBar = computed(() => ['checkout', 'order-detail', 'dish-detail'].includes(route.name as string))
+
+onMounted(async () => {
+  await appStore.initShop()
+  cartStore.fetchCart()
+})
 </script>
 
-<style scoped></style>
+<template>
+  <div class="min-h-screen bg-gray-50 pb-16">
+    <RouterView />
+    <TabBar v-if="!hideTabBar" />
+  </div>
+</template>
